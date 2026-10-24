@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}{{ trip.name }} · TripWeaver{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+{% block content %}
+<div class="trip-detail-heading">
+    <div><a class="back-link back-link-button" href="{{ url_for('index') }}">← Dashboard</a><p class="eyebrow">{{ trip.destination }}</p><h1>{{ trip.name }}</h1><p class="trip-dates">{{ trip.start_date|date_label }} – {{ trip.end_date|date_label }}</p></div>
+    <div class="detail-actions"><a class="button button-secondary" href="{{ url_for('edit_trip', trip_id=trip.id) }}">Edit trip</a><a class="button button-primary" href="{{ url_for('create_activity', trip_id=trip.id) }}">＋ Add activity</a></div>
+</div>
+
+<section class="metric-grid detail-metrics">
+    <div class="metric-card"><span class="metric-label">Budget remaining</span><strong class="{% if trip.get_budget_remaining() < 0 %}negative{% endif %}">${{ "%.2f"|format(trip.get_budget_remaining()) }}</strong><span class="metric-hint">from ${{ "%.2f"|format(trip.budget) }} total</span></div>
+    <div class="metric-card"><span class="metric-label">Activities</span><strong>{{ trip.activities|length }}</strong><span class="metric-hint">Across your itinerary</span></div>
+    <div class="metric-card"><span class="metric-label">Conflicts</span><strong class="{% if conflicts %}negative{% endif %}">{{ conflicts|length }}</strong><span class="metric-hint">{% if conflicts %}Needs attention{% else %}Your schedule is clear{% endif %}</span></div>
+    <div class="metric-card"><span class="metric-label">Trip length</span><strong>{{ trip.get_trip_days() }}</strong><span class="metric-hint">days planned</span></div>
+    <div class="metric-card"><span class="metric-label">Average per day</span><strong>${{ "%.2f"|format(trip.get_average_daily_cost()) }}</strong><span class="metric-hint">planned activity spend</span></div>
+    <div class="metric-card"><span class="metric-label">Planned time</span><strong>{{ trip.get_total_activity_minutes() }}</strong><span class="metric-hint">activity minutes</span></div>
+</section>
+
+<section class="category-cost-card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">BUDGET BREAKDOWN</p>
+            <h2>Spending by category</h2>
+        </div>
+    </div>
+
+    {% for category, cost in category_costs.items() %}
+        <div class="category-row">
+            <span>{{ category }}</span>
+            <strong>${{ "%.2f"|format(cost) }} <small>{{ "%.2f"|format(category_percentages[category]) }}%</small></strong>
+        </div>
+        <div class="category-bar-track">
+            <div class="category-bar-fill" style="width: {{ category_percentages[category] }}%;"></div>
+        </div>
+    {% endfor %}
+</section>
+
+
+<section class="weather-section">
+    <div class="section-heading weather-heading">
+        <div><p class="eyebrow">TRIP WEATHER</p><h2>Weather by location</h2></div>
+        <span class="muted">Powered by Open-Meteo</span>
+    </div>
+    <div class="weather-location-grid">
+        {% for location_weather in weather.locations %}
+        <article class="weather-location-card">
+            <div class="weather-location-heading"><div><p class="eyebrow">LOCATION</p><h3>{{ location_weather.location }}</h3></div><span class="weather-day-count">{{ location_weather.days|length }} day{% if location_weather.days|length != 1 %}s{% endif %}</span></div>
+            {% if location_weather.reasons %}
+            <div class="weather-location-notice">
+                <strong>Weather information</strong>
+                {% for reason in location_weather.reasons %}<p>{{ reason }}</p>{% endfor %}
+            </div>
+            {% endif %}
+            <div class="weather-day-grid">
+                {% for day in location_weather.days %}
+                <div class="weather-day-card">
+                    <p class="weather-date">{{ day.weather_date|date_label }}</p>
+                    <strong class="weather-condition">{{ day.weather_code|weather_label }}</strong>
+                    <div class="weather-temperature"><span>{{ day.temperature_min|weather_measure(0, "°") }}</span><strong>{{ day.temperature_max|weather_measure(0, "°C") }}</strong></div>
+                    <div class="weather-detail-list">
+                        <span>Rain <strong>{{ day.precipitation_probability|weather_measure(0, "%") }}</strong></span>
+                        <span>UV <strong>{{ day.uv_index|weather_measure(1) }}</strong></span>
+                        <span>Wind <strong>{{ day.wind_speed|weather_measure(0, " km/h") }}</strong></span>
+                        <span>Rainfall <strong>{{ day.precipitation_sum|weather_measure(1, " mm") }}</strong></span>
+                    </div>
+                    <p class="weather-sun">Sunrise {{ day.sunrise|weather_time }} · Sunset {{ day.sunset|weather_time }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="map-section" data-trip-map data-trip-id="{{ trip.id }}">
+    <div class="section-heading">
+        <div><p class="eyebrow">TRIP MAP</p><h2>Activity route</h2></div>
+        <span class="muted">Ordered by date and time</span>
+    </div>
+    <div class="map-panel">
+        <div id="trip-map" class="trip-map"></div>
+        <p class="map-status" data-map-status>Loading activity map...</p>
+        <div class="map-legend" data-map-legend></div>
+    </div>
+</section>
+
+{% if location_mismatches %}
+<section class="location-warning">
+    <div class="location-warning-icon">!</div>
+    <div>
+        <strong>Some activity places need your attention</strong>
+        <p>The trip destination is {{ trip.destination }}, but these activities need to be checked or selected again:</p>
+        <div class="location-warning-list">
+            {% for activity in location_mismatches %}
+                <a href="{{ url_for('edit_activity', trip_id=trip.id, activity_id=activity.id) }}">{{ activity.title }}</a>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+{% if conflicts %}
+<section class="conflict-panel">
+    <div class="conflict-panel-heading"><div class="alert-icon">!</div><div><p class="eyebrow">NEEDS ATTENTION</p><h2>Schedule conflicts</h2><p>{{ conflicts|length }} overlapping pair{% if conflicts|length != 1 %}s{% endif %} found in your itinerary.</p></div></div>
+    <div class="conflict-list">
+        {% for first, second in conflicts %}
+        <article class="conflict-item">
+            <span class="conflict-item-icon">!</span>
+            <div class="conflict-item-copy"><strong>{{ first.title }} <span>overlaps with</span> {{ second.title }}</strong><p>{{ first.activity_date|date_label }} · {{ first.start_time }}–{{ first.end_time }} and {{ second.start_time }}–{{ second.end_time }}</p></div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% else %}
+<section class="alert-card alert-success"><div class="alert-icon">✓</div><div><strong>Your itinerary is looking good</strong><p>No overlapping activities were found.</p></div></section>
+{% endif %}
+
+<section class="section-heading itinerary-heading">
+    <div><p class="eyebrow">YOUR PLAN</p><h2>Itinerary timeline</h2></div>
+    <form class="filter-form" method="get" action="{{ url_for('trip_detail', trip_id=trip.id) }}">
+        <label for="category-filter">Filter by category</label>
+        <select id="category-filter" name="category">
+            <option value="All" {% if selected_category == 'All' %}selected{% endif %}>All categories</option>
+            {% for category in categories %}
+                <option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category }}</option>
+            {% endfor %}
+        </select>
+        <button class="button button-secondary button-small" type="submit">Apply</button>
+    </form>
+</section>
+<p class="muted itinerary-count">Showing {{ activities_to_display|length }} of {{ trip.activities|length }} activities</p>
+{% if activities_to_display %}
+<section class="timeline">
+    {% for daily_plan in daily_plans %}
+    <div class="day-heading"><div><span class="eyebrow">DAY {{ loop.index }}</span><h3>{{ daily_plan.date|date_label }}</h3></div><span class="day-cost">${{ "%.2f"|format(daily_plan.cost) }} planned</span></div>
+    {% if daily_plan.free_time_slots %}
+    <div class="free-time-card"><span class="free-time-icon">✦</span><div><strong>Open time</strong><p>{% for start_time, end_time in daily_plan.free_time_slots %}{{ start_time }} – {{ end_time }}{% if not loop.last %} · {% endif %}{% endfor %}</p></div></div>
+    {% endif %}
+    {% for activity in daily_plan.activities %}
+    <article id="activity-{{ activity.id }}" class="timeline-item {% if activity.id in conflict_activity_ids %}timeline-item-conflict{% endif %}">
+        <div class="timeline-time"><strong>{{ activity.start_time }}</strong><span>{{ activity.end_time }}</span></div>
+        <div class="timeline-line"><span></span></div>
+        <div class="activity-card {% if activity.id in conflict_activity_ids %}activity-card-conflict{% endif %}">
+            <div class="activity-card-header"><div><span class="category-label">{{ activity.category }}</span><h3>{{ activity.title }}</h3></div><div class="activity-card-meta"><span class="cost-label">${{ "%.2f"|format(activity.cost) }}</span>{% if activity.id in conflict_activity_ids %}<span class="conflict-badge">Conflict</span>{% endif %}</div></div>
+            <p class="activity-date">{{ activity.activity_date|date_label }} · {{ activity.get_duration_label() }}</p><p class="activity-location">{{ activity.place_name or activity.location or trip.destination }}</p>
+            {% if activity.notes %}<p class="activity-notes">{{ activity.notes }}</p>{% endif %}
+            <div class="activity-actions"><a class="text-button edit-link" href="{{ url_for('edit_activity', trip_id=trip.id, activity_id=activity.id) }}">Edit</a><form class="delete-activity-form" method="post" action="{{ url_for('delete_activity', trip_id=trip.id, activity_id=activity.id) }}"><button class="text-button" type="button" data-open-delete-activity data-activity-title="{{ activity.title }}" data-activity-category="{{ activity.category }}" data-activity-date="{{ activity.activity_date|date_label }}" data-activity-time="{{ activity.start_time }} – {{ activity.end_time }}" data-activity-cost="${{ "%.2f"|format(activity.cost) }}" data-activity-location="{{ activity.place_name or activity.location or trip.destination }}" data-activity-notes="{{ activity.notes }}">Remove</button></form></div>
+        </div>
+    </article>
+    {% endfor %}
+    {% endfor %}
+</section>
+{% else %}
+<div class="empty-state"><span class="empty-icon">⌕</span><h3>No matching activities</h3><p>There are no activities in the selected category.</p><a class="button button-secondary" href="{{ url_for('trip_detail', trip_id=trip.id) }}">Show all activities</a></div>
+{% endif %}
+
+<div class="modal-backdrop" id="delete-activity-modal" hidden>
+    <section class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+        <div class="modal-header">
+            <div class="modal-warning-icon">!</div>
+            <button class="modal-close" type="button" data-close-delete-modal aria-label="Close dialog">×</button>
+        </div>
+        <p class="eyebrow modal-eyebrow">REMOVE ACTIVITY</p>
+        <h2 id="delete-modal-title">Remove this activity?</h2>
+        <p class="modal-description">Please review the activity details before removing it from your itinerary.</p>
+        <div class="delete-activity-details">
+            <div class="delete-detail-main"><span class="category-label" id="delete-activity-category"></span><strong id="delete-activity-title"></strong></div>
+            <div class="delete-detail-grid">
+                <div><span>Date</span><strong id="delete-activity-date"></strong></div>
+                <div><span>Time</span><strong id="delete-activity-time"></strong></div>
+                <div><span>Estimated cost</span><strong id="delete-activity-cost"></strong></div>
+                <div><span>Location</span><strong id="delete-activity-location"></strong></div>
+            </div>
+            <p class="delete-detail-notes" id="delete-activity-notes"></p>
+        </div>
+        <p class="modal-danger-note">This action cannot be undone.</p>
+        <div class="modal-actions"><button class="button button-secondary" type="button" data-close-delete-modal>Keep activity</button><button class="button button-danger" type="button" data-confirm-delete-activity>Remove activity</button></div>
+    </section>
+</div>
+{% endblock %}
+{% block scripts_extra %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='map.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{% if edit_mode %}Edit trip{% else %}New trip{% endif %} · TripWeaver{% endblock %}
+{% block content %}
+<div class="form-page">
+    <a class="back-link {% if not edit_mode %}back-link-button{% endif %}" href="{% if edit_mode %}{{ url_for('trip_detail', trip_id=trip.id) }}{% else %}{{ url_for('index') }}{% endif %}">← {% if edit_mode %}Back to trip{% else %}Back to dashboard{% endif %}</a>
+    <div class="form-heading"><p class="eyebrow">{% if edit_mode %}UPDATE JOURNEY{% else %}NEW JOURNEY{% endif %}</p><h1>{% if edit_mode %}Edit trip{% else %}Plan a new trip{% endif %}</h1><p>{% if edit_mode %}Update the basic details of this journey.{% else %}Start with the basics. You can add activities next.{% endif %}</p></div>
+    <form class="card form-card" method="post">
+        <div class="form-grid">
+            <label>Trip name<input name="name" value="{{ form.get('name', trip.name if edit_mode else '') }}" placeholder="e.g. Melbourne Food Weekend" required></label>
+            <label>Country<select id="country" name="country" required><option value="">Select a country</option>{% for country in country_cities %}<option value="{{ country }}" {% if form.get('country', trip.country if edit_mode else '') == country %}selected{% endif %}>{{ country }}</option>{% endfor %}</select></label>
+            <label><span id="city-label">City</span><select id="city" name="city" data-selected-city="{{ form.get('city', trip.city if edit_mode else '') }}" required><option value="">Select a country first</option></select></label>
+            <label>Start date<input class="date-picker" type="date" name="start_date" value="{{ form.get('start_date', trip.start_date if edit_mode else '') }}" required></label>
+            <label>End date<input class="date-picker" type="date" name="end_date" value="{{ form.get('end_date', trip.end_date if edit_mode else '') }}" required></label>
+            <label>Budget (AUD)<input type="number" name="budget" value="{{ form.get('budget', trip.budget if edit_mode else '') }}" min="0" step="0.01" placeholder="500" required></label>
+        </div>
+        <div class="form-actions"><a class="button button-secondary" href="{% if edit_mode %}{{ url_for('trip_detail', trip_id=trip.id) }}{% else %}{{ url_for('index') }}{% endif %}">Cancel</a>{% if not edit_mode %}<button class="button button-secondary" type="reset" data-clear-form>Clear</button>{% endif %}<button class="button button-primary" type="submit">{% if edit_mode %}Save changes{% else %}Create trip{% endif %}</button></div>
+    </form>
+    <script id="country-city-data" type="application/json">{{ country_cities|tojson }}</script>
+</div>
+{% endblock %}

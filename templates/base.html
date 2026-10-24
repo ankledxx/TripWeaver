@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}TripWeaver{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block head_extra %}{% endblock %}
+</head>
+<body>
+    <div class="app-shell">
+        <header class="topbar">
+            <a class="brand" href="{{ url_for('index') }}">
+                <span class="brand-mark">✦</span>
+                <span>TripWeaver</span>
+            </a>
+            <nav class="topnav">
+                {% if request.endpoint == 'index' %}
+                    <span class="nav-link nav-link-active" aria-current="page">Dashboard</span>
+                {% else %}
+                    <a class="nav-link nav-link-button" href="{{ url_for('index') }}">Dashboard</a>
+                {% endif %}
+                {% if request.endpoint in ['create_trip', 'edit_trip'] %}
+                    <span class="nav-link nav-link-active" aria-current="page">New trip</span>
+                {% else %}
+                    <a class="nav-link nav-link-button" href="{{ url_for('create_trip') }}">New trip</a>
+                {% endif %}
+            </nav>
+        </header>
+
+        <main class="main-content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-stack">
+                        {% for category, message in messages %}
+                            <div class="flash flash-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    {% block scripts_extra %}{% endblock %}
+</body>
+</html>

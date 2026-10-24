@@ -1,0 +1,42 @@
+[
+  {
+    "id": "demo-trip",
+    "name": "Sydney Weekend Escape",
+    "destination": "Sydney, Australia",
+    "start_date": "2026-10-10",
+    "end_date": "2026-10-12",
+    "budget": 560.0,
+    "activities": [
+      {
+        "id": "demo-1",
+        "title": "Circular Quay breakfast",
+        "activity_date": "2026-10-10",
+        "start_time": "09:00",
+        "end_time": "10:00",
+        "category": "Food",
+        "cost": 35.0,
+        "notes": "Start the trip with a relaxed breakfast."
+      },
+      {
+        "id": "demo-2",
+        "title": "Museum of Sydney",
+        "activity_date": "2026-10-10",
+        "start_time": "10:30",
+        "end_time": "13:00",
+        "category": "Attraction",
+        "cost": 28.0,
+        "notes": "Allow extra time for the harbour exhibits."
+      },
+      {
+        "id": "demo-3",
+        "title": "Harbour walk",
+        "activity_date": "2026-10-10",
+        "start_time": "15:00",
+        "end_time": "17:00",
+        "category": "Outdoor",
+        "cost": 0.0,
+        "notes": "A flexible afternoon activity."
+      }
+    ]
+  }
+]

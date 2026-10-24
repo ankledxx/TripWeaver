@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Add activity · TripWeaver{% endblock %}
+{% block content %}
+<div class="form-page">
+    <a class="back-link" href="{{ url_for('trip_detail', trip_id=trip.id) }}">← Back to {{ trip.name }}</a>
+    <div class="form-heading"><p class="eyebrow">BUILD YOUR ITINERARY</p><h1>Add an activity</h1><p>{{ trip.destination }} · {{ trip.start_date|date_label }} – {{ trip.end_date|date_label }}</p></div>
+    <form class="card form-card" method="post">
+        <div class="form-grid">
+            <label>Activity title<input name="title" value="{{ form.get('title', '') }}" placeholder="e.g. Harbour bridge walk" required></label>
+            <label>Category<select name="category"><option>Attraction</option><option>Food</option><option>Transport</option><option>Accommodation</option><option>Outdoor</option><option>Shopping</option><option>Other</option></select></label>
+            <label>Date<input class="date-picker" type="date" name="activity_date" value="{{ form.get('activity_date', trip.start_date) }}" min="{{ trip.start_date }}" max="{{ trip.end_date }}" required></label>
+            <label>Start time<input class="time-picker" type="time" name="start_time" value="{{ form.get('start_time', '09:00') }}" required></label>
+            <label>End time<input class="time-picker" type="time" name="end_time" value="{{ form.get('end_time', '10:00') }}" required></label>
+            <label>Estimated cost (AUD)<input type="number" name="cost" value="{{ form.get('cost', '0') }}" min="0" step="0.01"></label>
+        </div>
+        <div class="place-picker" data-place-picker data-trip-destination="{{ trip.destination }}" data-search-url="{{ url_for('search_places', trip_id=trip.id) }}">
+            <label>Activity place
+                <div class="place-search-row">
+                    <input type="search" data-place-search placeholder="Search for a place in {{ trip.destination }}" autocomplete="off">
+                    <button class="button button-secondary button-small" type="button" data-search-place>Search</button>
+                </div>
+            </label>
+            <div class="place-results" data-place-results hidden></div>
+            <p class="selected-place" data-selected-place>No place selected</p>
+            <input type="hidden" name="place_name" data-place-name value="{{ form.get('place_name', '') }}">
+            <input type="hidden" name="place_latitude" data-place-latitude value="{{ form.get('place_latitude', '') }}">
+            <input type="hidden" name="place_longitude" data-place-longitude value="{{ form.get('place_longitude', '') }}">
+            <input type="hidden" name="place_destination" data-place-destination value="{{ trip.destination }}">
+        </div>
+        <label>Notes<textarea name="notes" rows="4" placeholder="Anything you want to remember...">{{ form.get('notes', '') }}</textarea></label>
+        <div class="form-actions"><a class="button button-secondary" href="{{ url_for('trip_detail', trip_id=trip.id) }}">Cancel</a><button class="button button-primary" type="submit">Add to itinerary</button></div>
+    </form>
+</div>
+{% endblock %}
+{% block scripts_extra %}
+<script src="{{ url_for('static', filename='map.js') }}"></script>
+{% endblock %}

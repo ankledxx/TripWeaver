@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · TripWeaver{% endblock %}
+{% block content %}
+<section class="hero-row">
+    <div>
+        <p class="eyebrow">PERSONAL TRAVEL COMMAND CENTRE</p>
+        <h1>Shape a better journey.</h1>
+        <p class="hero-copy">Organise activities, protect your budget, and catch itinerary conflicts before they become travel stress.</p>
+    </div>
+    <a class="button button-primary" href="{{ url_for('create_trip') }}">Plan a new trip <span>→</span></a>
+</section>
+
+<section class="metric-grid">
+    <div class="metric-card"><span class="metric-label">Active trips</span><strong>{{ all_trips|length }}</strong><span class="metric-hint">Your travel plans</span></div>
+    <div class="metric-card"><span class="metric-label">Planned activities</span><strong>{{ total_activities }}</strong><span class="metric-hint">Ready to explore</span></div>
+    <div class="metric-card"><span class="metric-label">Planned spend</span><strong>${{ "%.2f"|format(total_spend) }}</strong><span class="metric-hint">of ${{ "%.2f"|format(total_budget) }}</span></div>
+</section>
+
+<section class="section-heading">
+    <div>
+        <p class="eyebrow">YOUR JOURNEYS</p>
+        <h2>Trips at a glance</h2>
+    </div>
+    <span class="muted">{{ trips|length }} saved plan{% if trips|length != 1 %}s{% endif %}</span>
+</section>
+
+<form class="trip-toolbar card" method="get">
+    <label>Search trips<input type="search" name="query" value="{{ query }}" placeholder="Search by name or location"></label>
+    <label>Filter<select name="filter">
+        <option value="all" {% if trip_filter == 'all' %}selected{% endif %}>All trips</option>
+        <option value="conflicts" {% if trip_filter == 'conflicts' %}selected{% endif %}>With conflicts</option>
+        <option value="over_budget" {% if trip_filter == 'over_budget' %}selected{% endif %}>Over budget</option>
+        <option value="within_budget" {% if trip_filter == 'within_budget' %}selected{% endif %}>Within budget</option>
+    </select></label>
+    <label>Sort by<select name="sort">
+        <option value="start_asc" {% if sort_order == 'start_asc' %}selected{% endif %}>Start date: earliest</option>
+        <option value="start_desc" {% if sort_order == 'start_desc' %}selected{% endif %}>Start date: latest</option>
+        <option value="end_asc" {% if sort_order == 'end_asc' %}selected{% endif %}>End date: earliest</option>
+        <option value="end_desc" {% if sort_order == 'end_desc' %}selected{% endif %}>End date: latest</option>
+    </select></label>
+    <div class="trip-toolbar-actions"><button class="button button-primary" type="submit">Apply</button>{% if query or trip_filter != 'all' or sort_order != 'start_asc' %}<a class="button button-secondary" href="{{ url_for('index') }}">Clear</a>{% endif %}</div>
+</form>
+
+{% if trips %}
+<section class="trip-grid">
+    {% for trip in trips %}
+    {% set trip_conflicts = trip.get_conflicts() %}
+    <article class="trip-card">
+        <div class="trip-card-top">
+            <span class="trip-icon">✦</span>
+            <div class="trip-statuses"><span class="status-pill {% if trip.get_budget_remaining() < 0 %}status-danger{% else %}status-good{% endif %}">{% if trip.get_budget_remaining() < 0 %}Over budget{% else %}On track{% endif %}</span>{% if trip_conflicts %}<span class="status-pill status-danger">{{ trip_conflicts|length }} conflict{% if trip_conflicts|length != 1 %}s{% endif %}</span>{% else %}<span class="status-pill status-good">No conflicts</span>{% endif %}</div>
+        </div>
+        <h3>{{ trip.name }}</h3>
+        <p class="trip-destination">{{ trip.destination }}</p>
+        <p class="trip-dates">{{ trip.start_date|date_label }} – {{ trip.end_date|date_label }}</p>
+        <div class="progress-label"><span>Budget used</span><strong>{{ trip.get_budget_percent() }}%</strong></div>
+        <div class="progress-track"><span style="width: {{ trip.get_budget_percent() }}%"></span></div>
+        <div class="trip-card-footer"><span>{{ trip.activities|length }} activities</span><div class="trip-card-actions"><a href="{{ url_for('trip_detail', trip_id=trip.id) }}">Open trip →</a><form method="post" action="{{ url_for('delete_trip', trip_id=trip.id) }}"><button class="text-button" type="button" data-open-delete-trip data-trip-name="{{ trip.name }}" data-trip-destination="{{ trip.destination }}" data-trip-dates="{{ trip.start_date|date_label }} – {{ trip.end_date|date_label }}" data-trip-activities="{{ trip.activities|length }}" data-trip-cost="${{ '%.2f'|format(trip.get_total_cost()) }}" data-trip-conflicts="{{ trip_conflicts|length }}">Delete</button></form></div></div>
+    </article>
+    {% endfor %}
+</section>
+{% elif all_trips %}
+<div class="empty-state"><span class="empty-icon">⌕</span><h3>No trips match your search</h3><p>Try a different keyword or clear the filters.</p><a class="button button-primary" href="{{ url_for('index') }}">Show all trips</a></div>
+{% else %}
+<div class="empty-state"><span class="empty-icon">✦</span><h3>Your next journey starts here</h3><p>Create a trip to begin organising your itinerary.</p><a class="button button-primary" href="{{ url_for('create_trip') }}">Create your first trip</a></div>
+{% endif %}
+
+<div class="modal-backdrop" id="delete-trip-modal" hidden>
+    <section class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="delete-trip-modal-title">
+        <div class="modal-header">
+            <div class="modal-warning-icon">!</div>
+            <button class="modal-close" type="button" data-close-delete-trip-modal aria-label="Close dialog">×</button>
+        </div>
+        <p class="eyebrow modal-eyebrow">REMOVE TRIP</p>
+        <h2 id="delete-trip-modal-title">Delete this trip?</h2>
+        <p class="modal-description">Please review the trip details before removing this journey and all its activities.</p>
+        <div class="delete-activity-details delete-trip-details">
+            <div class="delete-detail-main"><span class="category-label">TRIP</span><strong id="delete-trip-name"></strong></div>
+            <div class="delete-detail-grid">
+                <div><span>Destination</span><strong id="delete-trip-destination"></strong></div>
+                <div><span>Dates</span><strong id="delete-trip-dates"></strong></div>
+                <div><span>Activities</span><strong id="delete-trip-activities"></strong></div>
+                <div><span>Total spend</span><strong id="delete-trip-cost"></strong></div>
+                <div><span>Schedule</span><strong id="delete-trip-conflicts"></strong></div>
+            </div>
+        </div>
+        <p class="modal-danger-note">This action cannot be undone.</p>
+        <div class="modal-actions"><button class="button button-secondary" type="button" data-close-delete-trip-modal>Keep trip</button><button class="button button-danger" type="button" data-confirm-delete-trip>Delete trip</button></div>
+    </section>
+</div>
+{% endblock %}
