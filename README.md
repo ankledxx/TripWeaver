@@ -1,6 +1,6 @@
 # TripWeaver
 
-TripWeaver is a local travel itinerary planner for the COMP9001 Final Project. It helps users create trips, manage activities, view a timeline, monitor a budget, identify overlapping activities, and find free time between scheduled activities.
+TripWeaver is a local travel itinerary planner. It helps users create trips, manage activities, view a timeline, monitor a budget, identify overlapping activities, and find free time between scheduled activities.
 
 ## Requirements
 
